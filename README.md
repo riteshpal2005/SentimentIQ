@@ -2,7 +2,7 @@
 
 An AI-powered web app that classifies text (reviews, tweets, feedback) as **Positive**, **Negative**, or **Neutral** using Hugging Face Transformers, Flask, and SQLite.
 
-Built by **Ritesh** as a college mini-project.
+Built by **Ritesh Pal**.
 
 ---
 
