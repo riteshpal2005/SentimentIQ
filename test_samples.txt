@@ -1,0 +1,50 @@
+====================================================
+  SENTIMENT ANALYZER — TEST SAMPLES
+  10 Reviews for Testing | Author: Ritesh
+====================================================
+
+---------- POSITIVE REVIEWS (6 out of 10) ----------
+
+1. This product is absolutely amazing! I've been using it for a month now and it has
+   completely exceeded my expectations. The quality is outstanding and customer support
+   was incredibly helpful. Highly recommend to everyone!
+
+2. I had such a wonderful experience with this service. Everything was smooth, fast, and
+   the team was super professional. I will definitely be coming back again. Five stars!
+
+3. Just received my order and I'm blown away by how good it is. Perfect packaging, great
+   build quality, and works exactly as advertised. Really happy with this purchase!
+
+4. Honestly one of the best decisions I've made. This app has made my life so much easier.
+   The interface is clean, intuitive, and it never crashes. Love every bit of it.
+
+5. Incredible value for the price. I was skeptical at first but now I'm a huge fan. The
+   results speak for themselves — absolutely worth every rupee spent. Will recommend to
+   all my friends and family.
+
+6. The customer service team went above and beyond to resolve my issue within hours. I've
+   never felt more valued as a customer. This company truly cares about their users.
+
+---------- NEGATIVE REVIEWS (4 out of 10) ----------
+
+7. Extremely disappointed with this purchase. The product stopped working after just three
+   days. The build quality is terrible and it feels very cheap. Complete waste of money.
+   Will never buy from this brand again.
+
+8. Worst experience I've ever had with an app. It crashes constantly, the UI is confusing,
+   and customer support just keeps sending automated replies. Absolutely useless product.
+
+9. I waited three weeks for my delivery and when it finally arrived, the item was damaged.
+   The return process is a nightmare and nobody seems to care. This is unacceptable service.
+
+10. Deeply frustrating. The product doesn't work as described, the battery drains in under
+    an hour, and there's no proper documentation. I regret buying this. Save your money.
+
+====================================================
+  USAGE:
+  Copy any of the above reviews (text only) into
+  the SentimentIQ analyzer and click Analyze.
+
+  Expected: Reviews 1-6 → POSITIVE (high confidence)
+            Reviews 7-10 → NEGATIVE (high confidence)
+====================================================

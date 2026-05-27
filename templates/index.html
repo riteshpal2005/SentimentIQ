@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SentimentIQ — AI Sentiment Analyzer</title>
+  <meta name="description" content="AI-powered sentiment analyzer that classifies text as Positive, Negative, or Neutral using Hugging Face Transformers." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════════
+       CSS Variables & Reset
+    ═══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0f1a;
+      --bg2:         #12152a;
+      --card:        #181c35;
+      --card2:       #1e2340;
+      --border:      rgba(255,255,255,0.07);
+      --purple:      #7c6fef;
+      --purple-dark: #5a4fd4;
+      --cyan:        #38e8c5;
+      --green:       #34d399;
+      --green-dim:   rgba(52,211,153,0.15);
+      --red:         #f87171;
+      --red-dim:     rgba(248,113,113,0.15);
+      --gray:        #94a3b8;
+      --gray-dim:    rgba(148,163,184,0.15);
+      --text:        #e2e8f0;
+      --text-muted:  #64748b;
+      --radius:      16px;
+      --radius-sm:   10px;
+      --shadow:      0 8px 32px rgba(0,0,0,0.4);
+      --shadow-sm:   0 4px 16px rgba(0,0,0,0.25);
+      --transition:  0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ═══════════════════════════════════════════════
+       Background Orbs
+    ═══════════════════════════════════════════════ */
+    .bg-orbs {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      animation: float 12s ease-in-out infinite alternate;
+    }
+    .orb1 { width: 500px; height: 500px; background: var(--purple); top: -120px; left: -100px; animation-delay: 0s; }
+    .orb2 { width: 400px; height: 400px; background: var(--cyan); bottom: -100px; right: -80px; animation-delay: -5s; }
+    .orb3 { width: 300px; height: 300px; background: #f472b6; top: 45%; left: 55%; animation-delay: -3s; }
+
+    @keyframes float {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, 20px) scale(1.08); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       Layout Wrapper
+    ═══════════════════════════════════════════════ */
+    .wrapper {
+      position: relative; z-index: 1;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    /* ═══════════════════════════════════════════════
+       Header
+    ═══════════════════════════════════════════════ */
+    header {
+      text-align: center;
+      padding: 3rem 0 2.5rem;
+    }
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(124,111,239,0.15);
+      border: 1px solid rgba(124,111,239,0.35);
+      color: var(--purple);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.35rem 1rem;
+      border-radius: 999px;
+      margin-bottom: 1.2rem;
+    }
+    .logo-badge::before { content: '●'; font-size: 0.5rem; animation: pulse-dot 2s infinite; }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    header h1 {
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 30%, var(--purple) 70%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+    }
+    header p {
+      margin-top: 0.9rem;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      font-weight: 400;
+    }
+    .author-tag {
+      display: inline-block;
+      margin-top: 0.6rem;
+      color: var(--cyan);
+      font-size: 0.85rem;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+
+    /* ═══════════════════════════════════════════════
+       Card Base
+    ═══════════════════════════════════════════════ */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.75rem;
+    }
+    .card-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1.2rem;
+    }
+
+    /* ═══════════════════════════════════════════════
+       Input Section
+    ═══════════════════════════════════════════════ */
+    #input-card { margin-bottom: 1.5rem; }
+
+    .textarea-wrap { position: relative; }
+    textarea#textInput {
+      width: 100%;
+      min-height: 130px;
+      background: var(--bg2);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1rem 2.2rem;
+      font-size: 0.97rem;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      line-height: 1.7;
+    }
+    textarea#textInput::placeholder { color: var(--text-muted); }
+    textarea#textInput:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(124,111,239,0.18);
+    }
+    .char-count {
+      position: absolute;
+      bottom: 0.55rem; right: 0.8rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .char-count.warn { color: var(--red); }
+
+    .input-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .btn-primary {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, var(--purple-dark), var(--purple));
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.97rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1.5rem;
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+      box-shadow: 0 4px 18px rgba(124,111,239,0.35);
+    }
+    .btn-primary:hover:not(:disabled) {
+      opacity: 0.9; transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(124,111,239,0.45);
+    }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .btn-clear {
+      background: var(--bg2);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 500;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1.1rem;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .btn-clear:hover { color: var(--text); border-color: var(--text-muted); }
+
+    /* Spinner inside button */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════════════
+       Result Card
+    ═══════════════════════════════════════════════ */
+    #result-card {
+      margin-bottom: 1.5rem;
+      display: none;
+      animation: slide-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+    .sentiment-icon {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.7rem;
+      flex-shrink: 0;
+    }
+    .sentiment-icon.pos { background: var(--green-dim); }
+    .sentiment-icon.neg { background: var(--red-dim); }
+    .sentiment-icon.neu { background: var(--gray-dim); }
+
+    .result-label {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .result-label.pos { color: var(--green); }
+    .result-label.neg { color: var(--red); }
+    .result-label.neu { color: var(--gray); }
+    .result-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+    .confidence-wrap { margin-top: 0.5rem; }
+    .confidence-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 0.45rem;
+    }
+    .confidence-label span:last-child { font-weight: 600; color: var(--text); }
+    .progress-track {
+      height: 7px;
+      background: var(--bg2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .progress-bar.pos { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+    .progress-bar.neg { background: linear-gradient(90deg, #f87171, #fb923c); }
+    .progress-bar.neu { background: linear-gradient(90deg, var(--gray), #94a3b8); }
+
+    /* ═══════════════════════════════════════════════
+       Stats Row
+    ═══════════════════════════════════════════════ */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.3rem 1.2rem;
+      text-align: center;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+    .stat-icon { font-size: 1.4rem; margin-bottom: 0.5rem; }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .stat-value.purple { color: var(--purple); }
+    .stat-value.green  { color: var(--green); }
+    .stat-value.red    { color: var(--red); }
+    .stat-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; font-weight: 500; }
+
+    /* ═══════════════════════════════════════════════
+       Charts Section
+    ═══════════════════════════════════════════════ */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .chart-wrap { position: relative; height: 240px; }
+
+    /* ═══════════════════════════════════════════════
+       History Table
+    ═══════════════════════════════════════════════ */
+    #history-card {}
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.2rem;
+    }
+    .btn-danger-sm {
+      background: transparent;
+      color: var(--red);
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 0.35rem 0.9rem;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .btn-danger-sm:hover { background: var(--red-dim); }
+
+    .history-table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    thead th {
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 0.75rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background var(--transition);
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tbody td { padding: 0.8rem 0.75rem; vertical-align: middle; }
+    .td-text {
+      max-width: 300px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-muted);
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .badge-pos { background: var(--green-dim);  color: var(--green); }
+    .badge-neg { background: var(--red-dim);    color: var(--red); }
+    .badge-neu { background: var(--gray-dim);   color: var(--gray); }
+    .td-conf { font-weight: 600; font-size: 0.82rem; }
+    .td-time { color: var(--text-muted); font-size: 0.78rem; white-space: nowrap; }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--text-muted);
+    }
+    .empty-state p { margin-top: 0.5rem; font-size: 0.88rem; }
+
+    /* ═══════════════════════════════════════════════
+       Toast
+    ═══════════════════════════════════════════════ */
+    #toast {
+      position: fixed;
+      bottom: 1.75rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.7rem 1.4rem;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--text);
+      box-shadow: var(--shadow);
+      z-index: 999;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { color: var(--red); border-color: rgba(248,113,113,0.35); }
+
+    /* ═══════════════════════════════════════════════
+       Footer
+    ═══════════════════════════════════════════════ */
+    footer {
+      text-align: center;
+      padding-top: 1rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    footer span { color: var(--purple); font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════
+       Responsive
+    ═══════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .stats-row   { grid-template-columns: repeat(3, 1fr); }
+      .charts-row  { grid-template-columns: 1fr; }
+      .stat-value  { font-size: 1.5rem; }
+      header h1    { font-size: 2rem; }
+    }
+    @media (max-width: 420px) {
+      .stats-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background decoration -->
+  <div class="bg-orbs">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- ── Header ─────────────────────────────── -->
+    <header>
+      <div class="logo-badge">AI Powered Sentiment Analysis</div>
+      <h1>SentimentIQ</h1>
+      <p>Analyze any text instantly — reviews, tweets, feedback &amp; more.</p>
+      <span class="author-tag">Built by Ritesh</span>
+    </header>
+
+    <!-- ── Input Card ─────────────────────────── -->
+    <div class="card" id="input-card">
+      <p class="card-title">Analyze Text</p>
+      <div class="textarea-wrap">
+        <textarea id="textInput"
+          placeholder="Paste a product review, tweet, customer feedback… anything you want to analyze."
+          maxlength="2000"
+          aria-label="Text to analyze"
+        ></textarea>
+        <span class="char-count" id="charCount">0 / 2000</span>
+      </div>
+      <div class="input-actions">
+        <button class="btn-primary" id="analyzeBtn" type="button">
+          <span class="spinner" id="spinner"></span>
+          <span id="btnText">✦ Analyze Sentiment</span>
+        </button>
+        <button class="btn-clear" id="clearBtn" type="button" title="Clear text">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- ── Result Card ────────────────────────── -->
+    <div class="card" id="result-card" aria-live="polite">
+      <p class="card-title">Analysis Result</p>
+      <div class="result-header">
+        <div class="sentiment-icon" id="sentimentIcon">😊</div>
+        <div>
+          <div class="result-label" id="resultLabel">Positive</div>
+          <div class="result-sub" id="resultSub">High confidence · just now</div>
+        </div>
+      </div>
+      <div class="confidence-wrap">
+        <div class="confidence-label">
+          <span>Confidence Score</span>
+          <span id="confidenceText">98.5%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Stats Row ──────────────────────────── -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value purple" id="statTotal">0</div>
+        <div class="stat-label">Total Analyzed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">😊</div>
+        <div class="stat-value green" id="statPos">0%</div>
+        <div class="stat-label">Positive Rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">😞</div>
+        <div class="stat-value red" id="statNeg">0%</div>
+        <div class="stat-label">Negative Rate</div>
+      </div>
+    </div>
+
+    <!-- ── Charts ─────────────────────────────── -->
+    <div class="charts-row">
+      <div class="card">
+        <p class="card-title">Distribution</p>
+        <div class="chart-wrap">
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <p class="card-title">Sentiment Counts</p>
+        <div class="chart-wrap">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── History ────────────────────────────── -->
+    <div class="card" id="history-card">
+      <div class="history-header">
+        <p class="card-title" style="margin:0">Recent Analyses</p>
+        <button class="btn-danger-sm" id="clearHistoryBtn">Clear All</button>
+      </div>
+      <div class="history-table-wrap">
+        <table id="historyTable" aria-label="Recent sentiment analyses">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Text</th>
+              <th>Sentiment</th>
+              <th>Confidence</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="5">
+              <div class="empty-state">
+                <div style="font-size:2rem">🔍</div>
+                <p>No analyses yet. Submit some text to get started!</p>
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Footer ─────────────────────────────── -->
+    <footer>
+      <p>SentimentIQ · Powered by <span>Hugging Face Transformers</span> &amp; Flask</p>
+    </footer>
+
+  </div><!-- /wrapper -->
+
+  <!-- Toast -->
+  <div id="toast" role="alert" aria-live="assertive"></div>
+
+  <script>
+    /* ════════════════════════════════════════════
+       Helpers
+    ════════════════════════════════════════════ */
+    const $ = id => document.getElementById(id);
+
+    function showToast(msg, isError = false) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.className = 'show' + (isError ? ' error' : '');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.className = ''; }, 3500);
+    }
+
+    function sentimentClass(s) {
+      if (s === 'POSITIVE') return 'pos';
+      if (s === 'NEGATIVE') return 'neg';
+      return 'neu';
+    }
+    function sentimentEmoji(s) {
+      if (s === 'POSITIVE') return '😊';
+      if (s === 'NEGATIVE') return '😞';
+      return '😐';
+    }
+    function sentimentLabel(s) {
+      if (s === 'POSITIVE') return 'Positive';
+      if (s === 'NEGATIVE') return 'Negative';
+      return 'Neutral';
+    }
+    function formatTime(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts + (ts.includes('Z') ? '' : 'Z'));
+      return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    /* ════════════════════════════════════════════
+       Textarea Character Counter
+    ════════════════════════════════════════════ */
+    const textarea  = $('textInput');
+    const charCount = $('charCount');
+
+    textarea.addEventListener('input', () => {
+      const n = textarea.value.length;
+      charCount.textContent = `${n} / 2000`;
+      charCount.className = 'char-count' + (n > 1800 ? ' warn' : '');
+    });
+
+    $('clearBtn').addEventListener('click', () => {
+      textarea.value = '';
+      textarea.dispatchEvent(new Event('input'));
+      textarea.focus();
+    });
+
+    /* ════════════════════════════════════════════
+       Charts Setup
+    ════════════════════════════════════════════ */
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.font.family = 'Inter';
+
+    const COLORS = {
+      pos: '#34d399',
+      neg: '#f87171',
+      neu: '#94a3b8'
+    };
+    const COLORS_DIM = {
+      pos: 'rgba(52,211,153,0.15)',
+      neg: 'rgba(248,113,113,0.15)',
+      neu: 'rgba(148,163,184,0.15)'
+    };
+
+    let pieChart, barChart;
+
+    function initCharts(data) {
+      const { POSITIVE: pos = 0, NEGATIVE: neg = 0, NEUTRAL: neu = 0 } = data;
+      const total = pos + neg + neu;
+
+      // ── Pie / Doughnut ──
+      const pieCtx = $('pieChart').getContext('2d');
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Positive', 'Negative', 'Neutral'],
+          datasets: [{
+            // When no data, show a grey placeholder ring
+            data: total > 0 ? [pos, neg, neu] : [1],
+            backgroundColor: total > 0
+              ? [COLORS.pos, COLORS.neg, COLORS.neu]
+              : ['rgba(100,116,139,0.25)'],
+            borderColor: total > 0
+              ? ['#181c35', '#181c35', '#181c35']
+              : ['rgba(100,116,139,0.15)'],
+            borderWidth: 3,
+            hoverOffset: total > 0 ? 8 : 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              display: total > 0,
+              labels: { padding: 16, usePointStyle: true, pointStyleWidth: 8, font: { size: 12 } }
+            },
+            tooltip: {
+              enabled: total > 0,
+              callbacks: {
+                label: ctx => {
+                  const t = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = t ? ((ctx.parsed / t) * 100).toFixed(1) : 0;
+                  return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                }
+              }
+            }
+          },
+          animation: { animateRotate: true, duration: 700 }
+        }
+      });
+
+      // ── Bar ──
+      const barCtx = $('barChart').getContext('2d');
+      if (barChart) barChart.destroy();
+      barChart = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Positive', 'Negative', 'Neutral'],
+          datasets: [{
+            label: 'Count',
+            data: [pos, neg, neu],
+            backgroundColor: [COLORS_DIM.pos, COLORS_DIM.neg, COLORS_DIM.neu],
+            borderColor:     [COLORS.pos,     COLORS.neg,     COLORS.neu],
+            borderWidth: 2,
+            borderRadius: 8,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} reviews` } }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 12 } } },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              beginAtZero: true,
+              ticks: { stepSize: 1, precision: 0 }
+            }
+          },
+          animation: { duration: 700, easing: 'easeOutQuart' }
+        }
+      });
+    }
+
+    /* ════════════════════════════════════════════
+       Stats Cards
+    ════════════════════════════════════════════ */
+    function updateStats(data) {
+      const total = data.TOTAL || 0;
+      const pos   = data.POSITIVE || 0;
+      const neg   = data.NEGATIVE || 0;
+
+      $('statTotal').textContent = total;
+      $('statPos').textContent   = total ? Math.round((pos / total) * 100) + '%' : '0%';
+      $('statNeg').textContent   = total ? Math.round((neg / total) * 100) + '%' : '0%';
+    }
+
+    /* ════════════════════════════════════════════
+       History Table
+    ════════════════════════════════════════════ */
+    function renderHistory(items) {
+      const tbody = $('historyBody');
+      if (!items || items.length === 0) {
+        tbody.innerHTML = `
+          <tr><td colspan="5">
+            <div class="empty-state">
+              <div style="font-size:2rem">🔍</div>
+              <p>No analyses yet. Submit some text to get started!</p>
+            </div>
+          </td></tr>`;
+        return;
+      }
+      tbody.innerHTML = items.map((r, i) => {
+        const cls = sentimentClass(r.sentiment);
+        return `
+          <tr>
+            <td style="color:var(--text-muted);font-size:0.8rem">${r.id}</td>
+            <td class="td-text" title="${escapeHtml(r.text)}">${escapeHtml(r.text)}</td>
+            <td><span class="badge badge-${cls}">${sentimentLabel(r.sentiment)}</span></td>
+            <td class="td-conf" style="color:var(--${cls === 'pos' ? 'green' : cls === 'neg' ? 'red' : 'gray'})">${(r.confidence * 100).toFixed(1)}%</td>
+            <td class="td-time">${formatTime(r.created_at)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ════════════════════════════════════════════
+       API Calls
+    ════════════════════════════════════════════ */
+    async function loadData() {
+      // Fetch stats and history independently so one failing won't block the other
+      try {
+        const statsRes = await fetch('/stats');
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          updateStats(stats);
+          initCharts(stats);
+        }
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+      }
+
+      try {
+        const histRes = await fetch('/history?limit=10');
+        if (histRes.ok) {
+          const history = await histRes.json();
+          renderHistory(history);
+        }
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+    }
+
+    async function doAnalyze() {
+      const text = textarea.value.trim();
+      if (!text) { showToast('Please enter some text first.', true); textarea.focus(); return; }
+
+      // Loading state
+      const btn     = $('analyzeBtn');
+      const spinner = $('spinner');
+      const btnText = $('btnText');
+      btn.disabled  = true;
+      spinner.style.display = 'block';
+      btnText.textContent   = 'Analyzing…';
+
+      try {
+        const res  = await fetch('/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+
+        if (!res.ok) { showToast(data.error || 'Something went wrong.', true); return; }
+
+        // Show result card
+        const cls  = sentimentClass(data.sentiment);
+        const pct  = (data.confidence * 100).toFixed(1);
+
+        const card  = $('result-card');
+        card.style.display = 'block';
+        // Re-trigger animation
+        card.style.animation = 'none';
+        card.offsetHeight;
+        card.style.animation = '';
+
+        const icon = $('sentimentIcon');
+        icon.textContent = sentimentEmoji(data.sentiment);
+        icon.className   = `sentiment-icon ${cls}`;
+
+        const lbl = $('resultLabel');
+        lbl.textContent = sentimentLabel(data.sentiment);
+        lbl.className   = `result-label ${cls}`;
+
+        $('resultSub').textContent = `${pct}% confidence · just now`;
+        $('confidenceText').textContent = pct + '%';
+
+        const bar = $('progressBar');
+        bar.className = `progress-bar ${cls}`;
+        bar.style.width = '0%';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          bar.style.width = pct + '%';
+        }));
+
+        // Refresh data
+        await loadData();
+        showToast(`✦ ${sentimentLabel(data.sentiment)} sentiment detected!`);
+
+      } catch (e) {
+        console.error(e);
+        showToast('Cannot reach server. Is Flask running?', true);
+      } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent   = '✦ Analyze Sentiment';
+      }
+    }
+
+    /* ════════════════════════════════════════════
+       Events
+    ════════════════════════════════════════════ */
+    $('analyzeBtn').addEventListener('click', doAnalyze);
+
+    // Ctrl+Enter to analyze
+    textarea.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doAnalyze();
+    });
+
+    $('clearHistoryBtn').addEventListener('click', async () => {
+      if (!confirm('Clear all history? This cannot be undone.')) return;
+      try {
+        await fetch('/clear', { method: 'DELETE' });
+        $('result-card').style.display = 'none';
+        await loadData();
+        showToast('History cleared.');
+      } catch (e) {
+        showToast('Failed to clear history.', true);
+      }
+    });
+
+    /* ════════════════════════════════════════════
+       Init
+    ════════════════════════════════════════════ */
+    loadData();
+  </script>
+
+</body>
+</html>
